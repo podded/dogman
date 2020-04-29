@@ -154,3 +154,4 @@ $RECYCLE.BIN/
 
 *.sql
 *.bz2
+.env

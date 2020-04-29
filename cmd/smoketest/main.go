@@ -5,6 +5,7 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/podded/dogman/engine"
 	"log"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -34,6 +35,8 @@ func main() {
 	}
 	defer dgm.Close()
 
+	PrintMemUsage()
+
 	// This is kind of a benchmark..... But not really, should implement a proper one later
 	start := time.Now()
 
@@ -41,7 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	err = dgm.SetAllSkillsLevel(0)
+	err = dgm.SetAllSkillsLevel(5)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -70,4 +73,23 @@ func main() {
 	log.Printf("Dogma engine spent %v initialising\n", start.Sub(init))
 	log.Printf("Dogma engine spent %v processing\n", time.Now().Sub(start))
 
+	PrintMemUsage()
+
+}
+
+
+// PrintMemUsage outputs the current, total and OS memory being used. As well as the number
+// of garage collection cycles completed.
+func PrintMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }

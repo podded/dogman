@@ -106,11 +106,11 @@ func (solo *Solo) InjectAllSkills() error {
 
 func (solo *Solo) SetAllSkillsLevel(level int) error {
 	if level < minSkillLevel || level > maxSkillLevel {
-		return errors.New(fmt.Sprintf("invalid skill level. must satisfy %d < %d <= %d", minSkillLevel, level, maxSkillLevel))
+		return errors.New(fmt.Sprintf("invalid skill level. must satisfy %d < level <= %d", minSkillLevel, maxSkillLevel))
 	}
 
 	for _, skill := range solo.skills {
-		skill.SetLevel(5)
+		skill.SetLevel(level)
 	}
 
 	return nil
@@ -139,6 +139,16 @@ func (solo *Solo) BuildAffectorTree() error {
 			if eff == nil {
 				continue
 			}
+			var bl bool
+			for _, bls := range effectBlacklist {
+				if eff.EffectID == bls {
+					// Well lets skip this one as it is on the blacklist for some reason
+					continue
+				}
+			}
+			if bl{
+				continue
+			}
 			for _, mi := range eff.Effect.ModifierInfo {
 				switch mi.Domain {
 				case "shipID":
@@ -146,6 +156,13 @@ func (solo *Solo) BuildAffectorTree() error {
 					default:
 						log.Printf("function '%s' is not implemented for the '%s' domain skipping", mi.Function, mi.Domain)
 					}
+				case "itemID":
+					// itemID refers to the current item, modifying itself.
+					switch mi.Function {
+					default:
+						log.Printf("function '%s' is not implemented for the '%s' domain skipping", mi.Function, mi.Domain)
+					}
+
 				default:
 					log.Printf("modifier info domain '%s' not implemented, skipping", mi.Domain)
 					continue
@@ -158,6 +175,7 @@ func (solo *Solo) BuildAffectorTree() error {
 	// Now add the effects of the skills implemented
 	for _, sk := range solo.skills {
 		if sk.GetLevel() == 0 {
+			log.Printf("Skipping skill %s as it is level 0", sk.Type.TypeName)
 			continue
 		}
 
@@ -169,11 +187,23 @@ func (solo *Solo) BuildAffectorTree() error {
 			if te == nil {
 				continue
 			}
+			var bl bool
+			for _, bls := range effectBlacklist {
+				if te.EffectID == bls {
+					// Well lets skip this one as it is on the blacklist for some reason
+					log.Printf("Skipping blacklisted skill %d", te.EffectID)
+					bl = true
+					break
+				}
+			}
+			if bl {
+				continue
+			}
 
 			for _, mi := range te.Effect.ModifierInfo {
 				switch mi.Domain {
 
-				case "ItemID":
+				case "itemID":
 					// ItemID is a way of referring to itself as far as I can tell
 					switch mi.Function {
 					case "ItemModifier":
@@ -192,8 +222,12 @@ func (solo *Solo) BuildAffectorTree() error {
 							}
 						}
 						// If either of these is null, we have a problem
-						if modified == nil || modifying == nil {
-							return errors.New(fmt.Sprintf("nil type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
+						if modified == nil {
+							return errors.New(fmt.Sprintf("nil modified type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
+						}
+
+						if modifying == nil {
+							return errors.New(fmt.Sprintf("nil modifying type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
 						}
 						// Both attrs are ok, so proceed
 
@@ -343,14 +377,14 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 				if !ok {
 					return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
 				}
-				nd.Edge(*cn)
+				nd.Edge(*cn).Label(tm.Operation)
 				// Edge done, move onto the next one
 				continue
 			} else {
 				// By reaching here, we have a subgraph for the type id of the modifier, but not the attribute id.
 				// Therefore we need to create the node
 				id := fmt.Sprintf("%d-%d", tm.ModifyingAttribute.TypeID, tm.ModifyingAttribute.AttributeID)
-				nd := sg.Node(id)
+				nd := sg.Node(id).Label(fmt.Sprintf("%s\n%f", tm.ModifyingAttribute.Info.AttributeName, tm.ModifyingAttribute.Value))
 				nodes[id] = &nd
 
 				// This should always run but I am going to check it anyway
@@ -368,7 +402,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 				if !ok {
 					return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
 				}
-				nd.Edge(*cn)
+				nd.Edge(*cn).Label(tm.Operation)
 				// Edge done, move onto the next one
 				continue
 			}
@@ -386,10 +420,8 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 			tg := rootGraph.Subgraph(fmt.Sprintf("%s - %s", ttype, tname), dot.ClusterOption{})
 			subgraphs[dta.TypeID] = tg
 
-			log.Printf("Creating new subgraph for Type - %s, ID:%d", tname, int32(dta.TypeID))
-
 			id := fmt.Sprintf("%d-%d", tm.ModifyingAttribute.TypeID, tm.ModifyingAttribute.AttributeID)
-			nd := tg.Node(id)
+			nd := tg.Node(id).Label(fmt.Sprintf("%s\n%f", tm.ModifyingAttribute.Info.AttributeName, tm.ModifyingAttribute.Value))
 			nodes[id] = &nd
 
 			// This should always run but I am going to check it anyway
@@ -407,7 +439,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 			if !ok {
 				return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
 			}
-			nd.Edge(*cn)
+			nd.Edge(*cn).Label(tm.Operation)
 			// Edge done, move onto the next one
 			continue
 
