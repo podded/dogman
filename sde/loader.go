@@ -5,21 +5,19 @@ import (
 )
 
 func getSDETypes(db *sqlx.DB) (map[int32]InvType, error) {
-
 	tps := make(map[int32]InvType)
 
 	var t []InvType
 	err := db.Select(&t, "SELECT * FROM invTypes")
 
-	for _, tp := range t {
-		tps[tp.TypeID] = tp
+	for tpi := range t {
+		tps[t[tpi].TypeID] = t[tpi]
 	}
 
 	return tps, err
 }
 
 func getSDEGroups(db *sqlx.DB) (map[int32]InvGroup, error) {
-
 	gps := make(map[int32]InvGroup)
 
 	var g []InvGroup
@@ -33,7 +31,6 @@ func getSDEGroups(db *sqlx.DB) (map[int32]InvGroup, error) {
 }
 
 func getSDECategories(db *sqlx.DB) (map[int32]InvCategory, error) {
-
 	cts := make(map[int32]InvCategory)
 
 	var c []InvCategory
@@ -53,8 +50,8 @@ func getSDEEffects(db *sqlx.DB) (map[int32]DogmaEffect, error) {
 	var e []DogmaEffect
 	err := db.Select(&e, "SELECT * FROM dgmEffects")
 
-	for _, ef := range e {
-		efs[ef.EffectID] = ef
+	for efi := range e {
+		efs[e[efi].EffectID] = e[efi]
 	}
 
 	return efs, err
@@ -67,8 +64,8 @@ func getSDEAttributes(db *sqlx.DB) (map[int32]DogmaAttribute, error) {
 	var a []DogmaAttribute
 	err := db.Select(&a, "SELECT * FROM dgmAttributeTypes")
 
-	for _, at := range a {
-		ats[at.AttributeID] = at
+	for ati := range a {
+		ats[a[ati].AttributeID] = a[ati]
 	}
 
 	return ats, err
@@ -102,12 +99,12 @@ func getSDETypeAttributes(db *sqlx.DB) (map[int32][]DogmaTypeAttribute, error) {
 			tas[ta.TypeID] = []DogmaTypeAttribute{ta}
 		}
 	}
-	
+
 	return tas, err
 }
 
 func getSDETypeEffects(db *sqlx.DB) (map[int32][]DogmaTypeEffect, error) {
-	
+
 	tes := make(map[int32][]DogmaTypeEffect)
 
 	var t []DogmaTypeEffect

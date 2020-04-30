@@ -12,7 +12,6 @@ type (
 		TypeAttributes []*DogmaTypeAttribute
 		TypeEffects    []*DogmaTypeEffect
 	}
-
 )
 
 func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
@@ -28,22 +27,21 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 	if !found {
 		return nil, errors.New("ship groupID not found")
 	}
-	
 
 	cat, found := sd.Categories[grp.CategoryID.Int32]
 	if !found {
 		return nil, errors.New("ship typeID not found")
 	}
-	
+
 	tp := InvType{
-		BasePrice:     tid.BasePrice.Float64,
-		Capacity:      tid.Capacity.Float64,
-		Description:   tid.Description.String,
-		GraphicID:     tid.GraphicID.Int32,
-		Group:         InvGroup{
-			Anchorable:           grp.Anchorable.Int32,
-			Anchored:             grp.Anchored.Int32,
-			Category:             InvCategory{
+		BasePrice:   tid.BasePrice.Float64,
+		Capacity:    tid.Capacity.Float64,
+		Description: tid.Description.String,
+		GraphicID:   tid.GraphicID.Int32,
+		Group: InvGroup{
+			Anchorable: grp.Anchorable.Int32,
+			Anchored:   grp.Anchored.Int32,
+			Category: InvCategory{
 				CategoryID:   cat.CategoryID,
 				CategoryName: cat.CategoryName.String,
 				IconID:       cat.IconID.Int32,
@@ -72,14 +70,13 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 
 	// Now get all of the attributes associated with the type
 
-
 	ta := sd.TypeAttributes[ship.Type.TypeID]
 	tas := make([]*DogmaTypeAttribute, len(ta))
 	for i, t := range ta {
 		sta := sd.Attributes[t.AttributeID]
 
 		val := float64(0)
-		if t.ValueFloat.Valid && ! t.ValueInt.Valid {
+		if t.ValueFloat.Valid && !t.ValueInt.Valid {
 			val = t.ValueFloat.Float64
 		} else if !t.ValueFloat.Valid && t.ValueInt.Valid {
 			val = float64(t.ValueInt.Int32)
@@ -94,25 +91,25 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 			AttributeID: t.AttributeID,
 			TypeID:      ship.Type.TypeID,
 			Value:       val,
-			Info:        DogmaAttribute{
+			Info: DogmaAttribute{
 				AttributeID:   t.AttributeID,
 				AttributeName: sta.AttributeName.String,
-				Category:    DogmaAttributeCategory{
+				Category: DogmaAttributeCategory{
 					CategoryDescription: ac.CategoryName.String,
 					CategoryID:          ac.CategoryID,
 					CategoryName:        ac.CategoryName.String,
 				},
-				DefaultValue:  sta.DefaultValue.Float64,
-				Description:   sta.Description.String,
-				DisplayName:   sta.DisplayName.String,
-				HighIsGood:    sta.HighIsGood.Int32,
-				IconID:        sta.IconID.Int32,
-				Published:     sta.Published.Int32,
-				Stackable:     sta.Stackable.Int32,
-				UnitID:        sta.UnitID.Int32,
+				DefaultValue: sta.DefaultValue.Float64,
+				Description:  sta.Description.String,
+				DisplayName:  sta.DisplayName.String,
+				HighIsGood:   sta.HighIsGood.Int32,
+				IconID:       sta.IconID.Int32,
+				Published:    sta.Published.Int32,
+				Stackable:    sta.Stackable.Int32,
+				UnitID:       sta.UnitID.Int32,
 			},
-			Affectors:   nil,
-			Affected:    false,
+			Affectors: nil,
+			Affected:  false,
 		}
 
 		tas[i] = &dta
@@ -130,8 +127,8 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 		des := sd.Effects[t.EffectID]
 
 		tef := DogmaTypeEffect{
-			EffectID:  t.EffectID,
-			Effect:    DogmaEffect{
+			EffectID: t.EffectID,
+			Effect: DogmaEffect{
 				Description:                    des.Description.String,
 				DisallowAutoRepeat:             des.DisallowAutoRepeat.Int32,
 				DischargeAttributeID:           des.DischargeAttributeID.Int32,
@@ -149,7 +146,7 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 				IsAssistance:                   des.IsAssistance.Int32,
 				IsOffensive:                    des.IsOffensive.Int32,
 				IsWarpSafe:                     des.IsWarpSafe.Int32,
-				ModifierInfoString:                   des.ModifierInfo.String,
+				ModifierInfoString:             des.ModifierInfo.String,
 				NpcActivationChanceAttributeID: des.NpcActivationChanceAttributeID.Int32,
 				NpcUsageChanceAttributeID:      des.NpcUsageChanceAttributeID.Int32,
 				PostExpression:                 des.PostExpression.Int32,
@@ -166,7 +163,7 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 		}
 
 		// Parse the ModifierInfoString into the ModifierInfo field
-		if len(tef.Effect.ModifierInfoString) > 0{
+		if len(tef.Effect.ModifierInfoString) > 0 {
 			var mi []ModifierInfo
 			err := yaml.Unmarshal([]byte(tef.Effect.ModifierInfoString), &mi)
 			if err == nil {
@@ -175,12 +172,8 @@ func NewShip(typeID int32, sd *sde.Data) (*Ship, error) {
 		}
 
 		tefs[i] = &tef
-
 	}
-
 	ship.TypeEffects = tefs
 
 	return ship, nil
-
 }
-

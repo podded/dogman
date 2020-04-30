@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/emicklei/dot"
+	// Need the mysql driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/podded/dogman/sde"
@@ -22,11 +23,6 @@ type (
 	}
 )
 
-const (
-	minSkillLevel = 0
-	maxSkillLevel = 5
-)
-
 func NewSolo(dbURI string) (*Solo, error) {
 
 	solo := &Solo{}
@@ -38,12 +34,12 @@ func NewSolo(dbURI string) (*Solo, error) {
 
 	solo.db = conn
 
-	sde, err := sde.New(conn)
+	sd, err := sde.New(conn)
 	if err != nil {
 		return nil, err
 	}
 
-	solo.sde = sde
+	solo.sde = sd
 
 	solo.ship = &Ship{}
 
@@ -80,15 +76,15 @@ func (solo *Solo) InjectAllSkills() error {
 
 	// Get all groups with category 16
 	for _, grp := range solo.sde.Groups {
-		if grp.CategoryID.Int32 != 16 {
+		if grp.CategoryID.Int32 != skillCategoryID {
 			continue
 		}
 		grps[grp.GroupID] = struct{}{}
 	}
 
-	for _, t := range solo.sde.Types {
-		if _, match := grps[t.GroupID.Int32]; match {
-			skill, err := NewSkill(t.TypeID, solo.sde)
+	for ti := range solo.sde.Types {
+		if _, match := grps[solo.sde.Types[ti].GroupID.Int32]; match {
+			skill, err := NewSkill(solo.sde.Types[ti].TypeID, solo.sde)
 			if err != nil {
 				log.Println("Error creating skill")
 				log.Printf("\t%v\n", err)
@@ -98,18 +94,18 @@ func (solo *Solo) InjectAllSkills() error {
 		}
 	}
 
-	log.Printf("Loaded %d skills! This took %v\n", len(solo.skills), time.Now().Sub(start))
+	log.Printf("Loaded %d skills! This took %v\n", len(solo.skills), time.Since(start))
 
 	return nil
-
 }
 
 func (solo *Solo) SetAllSkillsLevel(level int) error {
 	if level < minSkillLevel || level > maxSkillLevel {
-		return errors.New(fmt.Sprintf("invalid skill level. must satisfy %d < level <= %d", minSkillLevel, maxSkillLevel))
+		return fmt.Errorf("invalid skill level. must satisfy %d < level <= %d", minSkillLevel, maxSkillLevel)
 	}
 
 	for _, skill := range solo.skills {
+		// TODO Handle the errors here
 		skill.SetLevel(level)
 	}
 
@@ -118,17 +114,17 @@ func (solo *Solo) SetAllSkillsLevel(level int) error {
 
 func (solo *Solo) SetSkillLevel(skillID int32, level int) error {
 	if level < minSkillLevel || level > maxSkillLevel {
-		return errors.New(fmt.Sprintf("invalid skill level. must satisfy %d < %d <= %d", minSkillLevel, level, maxSkillLevel))
+		return fmt.Errorf("invalid skill level. must satisfy %d < %d <= %d", minSkillLevel, level, maxSkillLevel)
 	}
 
 	skill, ok := solo.skills[skillID]
 	if !ok {
-		return errors.New(fmt.Sprintf("skillid %d has not been injected yet", skillID))
+		return fmt.Errorf("skillid %d has not been injected yet", skillID)
 	}
 
-	skill.SetLevel(level)
+	err := skill.SetLevel(level)
 
-	return nil
+	return err
 }
 
 func (solo *Solo) BuildAffectorTree() error {
@@ -146,7 +142,7 @@ func (solo *Solo) BuildAffectorTree() error {
 					continue
 				}
 			}
-			if bl{
+			if bl {
 				continue
 			}
 			for _, mi := range eff.Effect.ModifierInfo {
@@ -169,7 +165,6 @@ func (solo *Solo) BuildAffectorTree() error {
 				}
 			}
 		}
-
 	}
 
 	// Now add the effects of the skills implemented
@@ -193,6 +188,7 @@ func (solo *Solo) BuildAffectorTree() error {
 					// Well lets skip this one as it is on the blacklist for some reason
 					log.Printf("Skipping blacklisted skill %d", te.EffectID)
 					bl = true
+					// TODO look into go tos to break out of the parent loop
 					break
 				}
 			}
@@ -223,11 +219,19 @@ func (solo *Solo) BuildAffectorTree() error {
 						}
 						// If either of these is null, we have a problem
 						if modified == nil {
-							return errors.New(fmt.Sprintf("nil modified type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
+							// For now just skip this modifier! just while debugging
+							// TODO FIX THIS
+							log.Println(errors.New(fmt.Sprintf("nil modified type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID)))
+							log.Println("Skipped this modifier")
+							continue
 						}
 
 						if modifying == nil {
-							return errors.New(fmt.Sprintf("nil modifying type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
+							// For now just skip this modifier! just while debugging
+							// TODO FIX THIS
+							log.Println(errors.New(fmt.Sprintf("nil modifying type attributes for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID)))
+							log.Println("Skipped this modifier")
+							continue
 						}
 						// Both attrs are ok, so proceed
 
@@ -265,10 +269,11 @@ func (solo *Solo) BuildAffectorTree() error {
 						}
 						// If mpdifying is nil at this point we have a problem
 						if modifying == nil {
-							return errors.New(fmt.Sprintf("nil modifying attribute for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID))
+							return fmt.Errorf("nil modifying attribute for effect '%d' in skill '%d'", te.Effect.EffectID, sk.Type.TypeID)
 						}
 
-						log.Printf("Adding a modifier to attr %d of type %d. modifiying attr is %d of type %d", modified.AttributeID, modified.TypeID, modifying.AttributeID, modifying.TypeID)
+						log.Printf("Adding a modifier to attr %d of type %d. modifiying attr is %d of type %d",
+							modified.AttributeID, modified.TypeID, modifying.AttributeID, modifying.TypeID)
 
 						// Add the affector to the modified attribute
 						mod := DogmaTypeModifier{
@@ -307,7 +312,6 @@ func (solo *Solo) BuildAffectorTree() error {
 				}
 			}
 		}
-
 	}
 	return nil
 }
@@ -343,6 +347,7 @@ func (solo *Solo) PrintAffectorTree() error {
 
 		// Now handle any modifiers that need to be applied to the node
 		if len(ta.Affectors) > 0 {
+			// TODO Handle these errors
 			printTraverseAffectorList(ta, ta, g, subgraphs, nodes, solo.sde)
 		}
 	}
@@ -352,15 +357,14 @@ func (solo *Solo) PrintAffectorTree() error {
 	return nil
 }
 
-func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute, rootGraph *dot.Graph, subgraphs map[int32]*dot.Graph, nodes map[string]*dot.Node, sd *sde.Data) error {
+func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute, rootGraph *dot.Graph,
+	subgraphs map[int32]*dot.Graph, nodes map[string]*dot.Node, sd *sde.Data) error {
 	// For each affector, make sure both modifying and modified node exist,
 	// make sure that the modifying node is marked as affected, if not build that before making the edge
 	for _, tm := range dta.Affectors {
 		typeID := tm.ModifyingAttribute.TypeID
-		log.Printf("Checking for existing subgraph of type %d", int32(typeID))
-		log.Printf("Current subgraphs - %#v", subgraphs)
 		// Check to see if we already have a subgraph for this type
-		if sg, ok := subgraphs[int32(typeID)]; ok {
+		if sg, ok := subgraphs[typeID]; ok {
 			// We already have a subgraph, check if the node already exists
 			if nd, ok := nodes[fmt.Sprintf("%d-%d", tm.ModifyingAttribute.TypeID, tm.ModifyingAttribute.AttributeID)]; ok {
 				// So we already have the node, make sure it has been affected before using it as an affector
@@ -375,7 +379,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 				// Get the current attribute node
 				cn, ok := nodes[fmt.Sprintf("%d-%d", dta.TypeID, dta.AttributeID)]
 				if !ok {
-					return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
+					return fmt.Errorf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID)
 				}
 				nd.Edge(*cn).Label(tm.Operation)
 				// Edge done, move onto the next one
@@ -400,7 +404,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 				// Get the current attribute node
 				cn, ok := nodes[fmt.Sprintf("%d-%d", dta.TypeID, dta.AttributeID)]
 				if !ok {
-					return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
+					return fmt.Errorf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID)
 				}
 				nd.Edge(*cn).Label(tm.Operation)
 				// Edge done, move onto the next one
@@ -413,7 +417,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 			// Need to look up the type from our sde records
 			tname := sd.Types[typeID].TypeName.String
 			ttype := "Type"
-			if sd.Groups[sd.Types[typeID].GroupID.Int32].CategoryID.Int32 == 16 {
+			if sd.Groups[sd.Types[typeID].GroupID.Int32].CategoryID.Int32 == skillCategoryID {
 				ttype = "Skill"
 			}
 
@@ -437,7 +441,7 @@ func printTraverseAffectorList(dta *DogmaTypeAttribute, root *DogmaTypeAttribute
 			// Get the current attribute node
 			cn, ok := nodes[fmt.Sprintf("%d-%d", dta.TypeID, dta.AttributeID)]
 			if !ok {
-				return errors.New(fmt.Sprintf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID))
+				return fmt.Errorf("trying to make edge to a modified node that does not exist for %d-%d", dta.TypeID, dta.AttributeID)
 			}
 			nd.Edge(*cn).Label(tm.Operation)
 			// Edge done, move onto the next one

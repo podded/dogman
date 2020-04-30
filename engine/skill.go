@@ -9,6 +9,11 @@ import (
 
 const (
 	skillLevelAttributeID = 280
+
+	minSkillLevel = 0
+	maxSkillLevel = 5
+
+	skillCategoryID = 16
 )
 
 type (
@@ -177,7 +182,6 @@ func NewSkill(typeID int32, sd *sde.Data) (*Skill, error) {
 		}
 
 		tefs[i] = &tef
-
 	}
 
 	skill.TypeEffects = tefs
@@ -187,7 +191,7 @@ func NewSkill(typeID int32, sd *sde.Data) (*Skill, error) {
 
 func (skill *Skill) SetLevel(level int) error {
 	if skill.TypeAttributes == nil {
-		return errors.New(fmt.Sprintf("malformed skill has no TypeAttributes set. skill %d", skill.Type.TypeID))
+		return fmt.Errorf("malformed skill has no TypeAttributes set. skill %d", skill.Type.TypeID)
 	}
 
 	for _, a := range skill.TypeAttributes {
@@ -197,7 +201,7 @@ func (skill *Skill) SetLevel(level int) error {
 		}
 	}
 
-	return errors.New("skill doesnt have a skill level.... this is odd!")
+	return errors.New("skill doesnt have a skill level.... this is odd")
 }
 
 func (skill *Skill) GetLevel() int {

@@ -127,7 +127,7 @@ type (
 	DogmaUnit struct {
 		Description string `json:"description"`
 		DisplayName string `json:"displayName"`
-		UnitID      int    `json:"unitID;primary_key"`
+		UnitID      int    `json:"unitID"`
 		UnitName    string `json:"unitName"`
 	}
 )

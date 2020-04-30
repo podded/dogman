@@ -33,7 +33,12 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer dgm.Close()
+	defer func() {
+		erro := dgm.Close()
+		if erro != nil {
+			log.Printf("error in closing dogma engine, %v", erro)
+		}
+	}()
 
 	PrintMemUsage()
 
@@ -42,41 +47,40 @@ func main() {
 
 	err = dgm.InjectAllSkills()
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 	err = dgm.SetAllSkillsLevel(5)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	err = dgm.SetSkillLevel(3392, 5)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	// Set ship type to Caracal
 	err = dgm.SetShipID(621)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	err = dgm.BuildAffectorTree()
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	err = dgm.PrintAffectorTree()
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
-	log.Printf("Dogma engine spent %v initialising\n", start.Sub(init))
-	log.Printf("Dogma engine spent %v processing\n", time.Now().Sub(start))
+	log.Printf("Dogma engine spent %v initializing\n", start.Sub(init))
+	log.Printf("Dogma engine spent %v processing\n", time.Since(start))
 
 	PrintMemUsage()
 
 }
-
 
 // PrintMemUsage outputs the current, total and OS memory being used. As well as the number
 // of garage collection cycles completed.

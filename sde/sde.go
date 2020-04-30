@@ -1,7 +1,6 @@
 package sde
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 )
@@ -33,49 +32,49 @@ func New(db *sqlx.DB) (*Data, error) {
 
 	tps, err := getSDETypes(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde types: %v\n", err))
+		return nil, fmt.Errorf("error getting sde types: %v", err)
 	}
 	sde.Types = tps
 
 	gps, err := getSDEGroups(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde groups: %v\n", err))
+		return nil, fmt.Errorf("error getting sde groups: %v", err)
 	}
 	sde.Groups = gps
 
 	cts, err := getSDECategories(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde categories: %v\n", err))
+		return nil, fmt.Errorf("error getting sde categories: %v", err)
 	}
 	sde.Categories = cts
 
 	efs, err := getSDEEffects(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde effects: %v\n", err))
+		return nil, fmt.Errorf("error getting sde effects: %v", err)
 	}
 	sde.Effects = efs
 
 	ats, err := getSDEAttributes(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde attributes: %v\n", err))
+		return nil, fmt.Errorf("error getting sde attributes: %v", err)
 	}
 	sde.Attributes = ats
 
 	atc, err := getSDEAttributeCategory(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde attribute categories: %v\n", err))
+		return nil, fmt.Errorf("error getting sde attribute categories: %v", err)
 	}
 	sde.AttributeCategories = atc
 
 	tas, err := getSDETypeAttributes(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde type attributes: %v\n", err))
+		return nil, fmt.Errorf("error getting sde type attributes: %v", err)
 	}
 	sde.TypeAttributes = tas
 
 	tes, err := getSDETypeEffects(db)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error getting sde type effects: %v\n", err))
+		return nil, fmt.Errorf("error getting sde type effects: %v", err)
 	}
 	sde.TypeEffects = tes
 
